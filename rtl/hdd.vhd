@@ -43,6 +43,16 @@ entity hdd is
     ram_di         : in unsigned(7 downto 0);  -- Data to sector buffer
     ram_do         : out unsigned(7 downto 0); -- Data from sector buffer
     ram_we         : in std_logic              -- Sector buffer write enable
+    
+    /*ram_addr_a     : in unsigned(8 downto 0);  -- Address for sector buffer
+    ram_addr_b     : in unsigned(8 downto 0);  -- Address for sector buffer
+    ram_di_a       : in unsigned(7 downto 0);  -- Data to sector buffer
+    ram_di_b       : in unsigned(7 downto 0);  -- Data to sector buffer
+    ram_do_a       : out unsigned(7 downto 0); -- Data from sector buffer
+    ram_do_b       : out unsigned(7 downto 0); -- Data from sector buffer
+    ram_we_a       : in std_logic;              -- Sector buffer write enable
+    ram_we_b       : in std_logic              -- Sector buffer write enable
+    */
     );
 end hdd;
 
@@ -65,10 +75,12 @@ architecture rtl of hdd is
   signal increment_sec_addr: std_logic;
   signal select_d: std_logic;
 
+   
   -- Sector buffer
   type sector_ram is array(0 to 511) of unsigned(7 downto 0);
   -- Double-ported RAM for holding a sector
   signal sector_buf : sector_ram;
+
 
   -- ProDOS constants
   constant PRODOS_COMMAND_STATUS   : unsigned := X"00";
@@ -80,7 +92,7 @@ architecture rtl of hdd is
 
 begin
   sector <= reg_block_h & reg_block_l;
-
+  
   cpu_interface : process (CLK_14M)
   begin
     if rising_edge(CLK_14M) then
@@ -188,6 +200,30 @@ begin
       ram_do <= sector_buf(to_integer(ram_addr));
     end if;
   end process;
+  
+  /*
+  -- Port A: Read/Write
+    process(CLK_14M)
+    begin
+        if rising_edge(CLK_14M) then
+            if ram_we_a = '1' then
+                sector_buf(to_integer(ram_addr_a)) <= ram_di_a;  -- Write to RAM
+            end if;
+            ram_do_a <= sector_buf(to_integer(ram_addr_a));      -- Read from RAM
+        end if;
+    end process;
+    
+    -- Port B: Independent Read/Write
+    process(CLK_14M)
+    begin
+        if rising_edge(CLK_14M) then
+            if ram_we_b = '1' then
+                sector_buf(to_integer(ram_addr_b)) <= ram_di_b;  -- Write to RAM
+            end if;
+            ram_do_b <= sector_buf(to_integer(ram_addr_b));      -- Read from RAM
+        end if;
+    end process;
+    */
 
   rom : entity work.hdd_rom port map (
     addr => A(7 downto 0),

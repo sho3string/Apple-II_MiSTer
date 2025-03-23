@@ -34,6 +34,7 @@ entity video_generator is
     LDPS_N     : in std_logic;
 
     -- load different video roms
+    ioctl_download : in  std_logic;
     ioctl_addr : in  std_logic_vector(24 downto 0);
     ioctl_data : in  std_logic_vector(7 downto 0);
     ioctl_wr   : in  std_logic;
@@ -49,8 +50,8 @@ architecture rtl of video_generator is
   -- IIe signals
   signal video_rom_addr : unsigned(11 downto 0);
   signal video_rom_out : unsigned(7 downto 0);
+  signal q_signal : std_logic_vector(7 downto 0); -- Intermediate signal
   signal video_shiftreg : unsigned(7 downto 0);
-
   
   signal video_rom_input_addr: std_logic_vector(12 downto 0);
 begin
@@ -63,21 +64,50 @@ begin
   --
   -----------------------------------------------------------------------------
 
+  -- Convert q_signal to unsigned
+  video_rom_out <= unsigned(q_signal);
+  
   video_rom_addr <= GR2 &
                     (DL(7) or (not GR2 and DL(6) and FLASH_CLK and not ALTCHAR)) &
                     (DL(6) and (ALTCHAR or GR2 or DL(7))) &
                     DL(5 downto 0) & SEGC & SEGB & SEGA;
 
   video_rom_input_addr<=std_logic_vector(ROMSWITCH & video_rom_addr) when ioctl_wr ='0' else ioctl_addr(12 downto 0);
-
-  videorom : work.spram
-  generic map (13,8,"rtl/roms/video2.mif")
+ 
+  /*
+  videorom : entity work.spram
+  generic map (13,8,"../../CORE/Apple-II_MiSTer/rtl/roms/video2.mif")
   port map (
    address => video_rom_input_addr,
    clock => CLK_14M,
    data => ioctl_data,
    wren => ioctl_wr,	
-   unsigned(q) => video_rom_out);
+   --unsigned(q) => video_rom_out);
+   q => q_signal);
+   */
+   
+    videorom : entity work.dualport_2clk_ram
+    generic map 
+    (
+        ADDR_WIDTH   => 13,
+        DATA_WIDTH   => 8,
+        ROM_PRELOAD  => true,
+        ROM_FILE     => "../../CORE/Apple-II_MiSTer/rtl/roms/video2.hex",
+        ROM_FILE_HEX => true
+    )
+    port map
+    (
+        clock_a   => CLK_14M,
+        wren_a    => ioctl_wr,
+        address_a => video_rom_input_addr,
+        data_a    => ioctl_data,
+    
+        clock_b   => CLK_14M,
+        address_b => video_rom_input_addr,
+        data_b => ioctl_data,
+        q_b => q_signal
+    );
+ 
 
   LS166 : process (CLK_14M)
   begin

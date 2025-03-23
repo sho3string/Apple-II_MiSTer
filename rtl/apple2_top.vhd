@@ -176,6 +176,8 @@ architecture arch of apple2_top is
   signal IO_STROBE : std_logic;
 
   signal ADDR : unsigned(15 downto 0);
+  --temporary signal
+  signal ADDR_as_slv : std_logic_vector(15 downto 0);
   signal D, PD: unsigned(7 downto 0);
   signal DISK_DO, PSG_DO, HDD_DO : unsigned(7 downto 0);
   signal cpu_we : std_logic;
@@ -216,7 +218,9 @@ architecture arch of apple2_top is
   signal closed_apple : std_logic;
 begin
 
-
+  -- Convert ADDR to std_logic_vector before use
+  ADDR_as_slv <= std_logic_vector(ADDR);
+  
   -- In the Apple ][, this was a 555 timer
   power_on : process(CLK_14M)
   begin
@@ -361,10 +365,11 @@ begin
 	 ioctl_wait => ioctl_wait
     );
 
-  keyboard : entity work.keyboard port map (
+  keyboard : entity work.keyboard_apple port map (
     PS2_Key  => PS2_Key,
     CLK_14M  => CLK_14M,
-	 reset    => reset_cold, -- use reset_cold, not reset so we keep the
+    ioctl_download => ioctl_download,
+	reset    => reset_cold, -- use reset_cold, not reset so we keep the
 	                         -- keyboard state machine running for key up 
 									 -- events during / after reset
     reads    => read_key,
@@ -411,7 +416,7 @@ begin
     TRACK2_WE      => TRACK2_WE,
     TRACK2_BUSY    => TRACK2_BUSY
     );
-	 
+/*	 
   hdd : entity work.hdd port map (
     CLK_14M        => CLK_14M,
     IO_SELECT      => IO_SELECT(7),
@@ -431,8 +436,8 @@ begin
     ram_do         => HDD_RAM_DO,
     ram_we         => HDD_RAM_WE
     );
-
-  mb : work.mockingboard
+*/
+  mb : entity work.mockingboard
     port map (
       CLK_14M    => CLK_14M,
       PHASE_ZERO => PHASE_ZERO,
@@ -441,7 +446,8 @@ begin
       I_RESET_L => not reset,
       I_ENA_H   => mb_enabled,
 
-      I_ADDR    => std_logic_vector(ADDR)(7 downto 0),
+      --I_ADDR    => std_logic_vector(ADDR)(7 downto 0),
+      I_ADDR => ADDR_as_slv(7 downto 0),
       I_DATA    => std_logic_vector(D),
       unsigned(O_DATA) => PSG_DO,
       I_RW_L    => not cpu_we,

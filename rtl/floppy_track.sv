@@ -132,7 +132,8 @@ always @(posedge clk) begin
 end
 
 
-dpram #(13,8) floppy_dpram
+//dpram #(13,8) floppy_dpram
+dualport_2clk_ram #(.ADDR_WIDTH(13),.DATA_WIDTH(8)) floppy_dpram
 (
         .clock_a(clk),
         .address_a({rel_lba, sd_buff_addr}),
@@ -145,7 +146,6 @@ dpram #(13,8) floppy_dpram
         .wren_b(ram_we),
         .data_b(ram_di),
         .q_b(ram_do)
-
 );
 
 /*

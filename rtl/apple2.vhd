@@ -123,6 +123,7 @@ architecture rtl of apple2 is
 
   -- Main ROM signals
   signal rom_out : unsigned(7 downto 0);
+  signal q_signal : std_logic_vector(7 downto 0); -- Intermediate signal
   signal rom_addr : unsigned(13 downto 0);
 
   -- Address decoder signals
@@ -171,6 +172,7 @@ architecture rtl of apple2 is
   signal video_rom_select : std_logic;
 begin
 
+  rom_out <= unsigned(q_signal);
   CLK_2M <= Q3;
 
   ram_addr <= CPU_RAM_ADDR when PHASE_ZERO = '1' else "00" & VIDEO_ADDRESS;
@@ -470,6 +472,7 @@ begin
     LDPS_N         => LDPS_N);
 
   video_rom_select <= '1' when ioctl_download='1' and ioctl_wr = '1' and ioctl_index = "00000001" else '0';
+  --video_rom_select <= '1';--when ioctl_download='1' and ioctl_wr = '1' else '0';-- and ioctl_index = "00000001" else '0';
 	 
   video_display : entity work.video_generator port map (
     CLK_14M    => CLK_14M,
@@ -484,7 +487,7 @@ begin
     DL         => VIDEO_DL,
     LDPS_N     => LDPS_N,
     FLASH_CLK  => FLASH_CLK,
-
+    ioctl_download => ioctl_download,
     ioctl_addr => ioctl_addr,
     ioctl_data => ioctl_data,
     ioctl_wr => video_rom_select,
@@ -541,13 +544,38 @@ begin
 
   -- Original Apple had asynchronous ROMs.  We use a synchronous ROM
   -- that needs its address earlier, hence the odd clock.
-  roms : work.spram
-  generic map (14,8,"rtl/roms/apple2e.mif")
+  /*roms : entity work.spram
+  generic map (14,8,"../../CORE/Apple-II_MiSTer/rtl/roms/apple2e.mif")
   port map (
    address => std_logic_vector(rom_addr),
    clock => CLK_14M,
    data => (others=>'0'),
    wren => '0',
-   unsigned(q) => rom_out);
+   --unsigned(q) => rom_out);
+   q => q_signal);*/
+   
+   
+   roms : entity work.dualport_2clk_ram
+    generic map 
+    (
+        ADDR_WIDTH   => 14,
+        DATA_WIDTH   => 8,
+        ROM_PRELOAD  => true,
+        ROM_FILE     => "../../CORE/Apple-II_MiSTer/rtl/roms/apple2e.hex",
+        ROM_FILE_HEX => true
+    )
+    port map
+    (
+        clock_a   => CLK_14M,
+        wren_a    => '0',
+        address_a => std_logic_vector(rom_addr),
+        data_a    => (others=>'0'),
+    
+        clock_b   => CLK_14M,
+        address_b => std_logic_vector(rom_addr),
+        data_b => (others=>'0'),
+        q_b => q_signal
+        --unsigned(q_b) => rom_out
+    );
 
 end rtl;

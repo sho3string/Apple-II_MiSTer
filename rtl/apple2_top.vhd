@@ -68,6 +68,7 @@ port (
     ROMSWITCH      : in std_logic;
 
 	PS2_Key        : in  std_logic_vector(10 downto 0);
+	mega65_caps    : in  std_logic;
 	joy            : in  std_logic_vector(5 downto 0);
 	joy_an         : in  std_logic_vector(15 downto 0);
 
@@ -367,6 +368,7 @@ begin
 
   keyboard : entity work.keyboard_apple port map (
     PS2_Key  => PS2_Key,
+    mega65_caps => mega65_caps,
     CLK_14M  => CLK_14M,
     ioctl_download => ioctl_download,
 	reset    => reset_cold, -- use reset_cold, not reset so we keep the
@@ -416,7 +418,7 @@ begin
     TRACK2_WE      => TRACK2_WE,
     TRACK2_BUSY    => TRACK2_BUSY
     );
-/*	 
+
   hdd : entity work.hdd port map (
     CLK_14M        => CLK_14M,
     IO_SELECT      => IO_SELECT(7),
@@ -436,7 +438,7 @@ begin
     ram_do         => HDD_RAM_DO,
     ram_we         => HDD_RAM_WE
     );
-*/
+
   mb : entity work.mockingboard
     port map (
       CLK_14M    => CLK_14M,

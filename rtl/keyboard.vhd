@@ -20,6 +20,7 @@ entity keyboard_apple is
     CLK_14M  : in std_logic;
     ioctl_download : in std_logic;
     PS2_Key  : in std_logic_vector(10 downto 0);  -- From PS/2 port
+    mega65_caps : in std_logic;         -- track caps lock key from mega65
     reads    : in std_logic;            -- Read strobe
     reset    : in std_logic;
     akd      : buffer std_logic;        -- Any key down
@@ -116,9 +117,10 @@ begin
     if reset = '1' then
       caplock <= '0';
     elsif rising_edge(CLK_14M) then
-      if state = KEY_UP and code = CAPS_LOCK then
-        caplock <= not caplock;
-      end if;
+      --if state = KEY_UP and code = CAPS_LOCK then
+      -- no need to track KEY_UP since this is done internally on the Mega65
+        caplock <= mega65_caps;--not caplock;
+      --end if;
     end if;
   end process;
 

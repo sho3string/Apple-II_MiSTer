@@ -43,16 +43,7 @@ entity hdd is
     ram_di         : in unsigned(7 downto 0);  -- Data to sector buffer
     ram_do         : out unsigned(7 downto 0); -- Data from sector buffer
     ram_we         : in std_logic              -- Sector buffer write enable
-    
-    /*ram_addr_a     : in unsigned(8 downto 0);  -- Address for sector buffer
-    ram_addr_b     : in unsigned(8 downto 0);  -- Address for sector buffer
-    ram_di_a       : in unsigned(7 downto 0);  -- Data to sector buffer
-    ram_di_b       : in unsigned(7 downto 0);  -- Data to sector buffer
-    ram_do_a       : out unsigned(7 downto 0); -- Data from sector buffer
-    ram_do_b       : out unsigned(7 downto 0); -- Data from sector buffer
-    ram_we_a       : in std_logic;              -- Sector buffer write enable
-    ram_we_b       : in std_logic              -- Sector buffer write enable
-    */
+  
     );
 end hdd;
 
@@ -77,10 +68,13 @@ architecture rtl of hdd is
 
    
   -- Sector buffer
-  type sector_ram is array(0 to 511) of unsigned(7 downto 0);
+  --type sector_ram is array(0 to 255) of unsigned(7 downto 0);
   -- Double-ported RAM for holding a sector
-  signal sector_buf : sector_ram;
-
+  --signal sector_buf : sector_ram;
+  
+  signal sec_data_a : unsigned(7 downto 0);
+  signal sec_data_b : unsigned(7 downto 0);
+  signal we_cpu     : std_logic;
 
   -- ProDOS constants
   constant PRODOS_COMMAND_STATUS   : unsigned := X"00";
@@ -91,7 +85,25 @@ architecture rtl of hdd is
   constant PRODOS_STATUS_PROTECT   : unsigned := X"2B";
 
 begin
+  
+  
   sector <= reg_block_h & reg_block_l;
+  we_cpu <= '1' when (RD = '0' and DEVICE_SELECT = '1' and A(3 downto 0) = X"8") else '0';
+  
+  secbuf : entity work.sector_ram_dp
+  port map (
+    clk => CLK_14M,
+
+    addr_a => sec_addr,
+    data_in_a => D_IN,
+    data_out_a => sec_data_a,
+    we_a => we_cpu,
+
+    addr_b => ram_addr,
+    data_in_b => ram_di,
+    data_out_b => ram_do,
+    we_b => ram_we
+  );
   
   cpu_interface : process (CLK_14M)
   begin
@@ -154,7 +166,8 @@ begin
               when X"6" => D_OUT <= reg_block_l;
               when X"7" => D_OUT <= reg_block_h;
               when X"8" =>
-                D_OUT <= sector_buf(to_integer(sec_addr));
+                --D_OUT <= sector_buf(to_integer(sec_addr));
+                D_OUT <= sec_data_a;
                 increment_sec_addr <= '1';
               when others => null;
             end case;
@@ -171,7 +184,7 @@ begin
               when X"6" => reg_block_l <= D_IN;
               when X"7" => reg_block_h <= D_IN;
               when X"8" =>
-                sector_buf(to_integer(sec_addr)) <= D_IN;
+                --sector_buf(to_integer(sec_addr)) <= D_IN;
                 increment_sec_addr <= '1';
               when others => null;
             end case;
@@ -191,7 +204,7 @@ begin
   end process; -- cpu_interface
 
   -- Dual-ported RAM holding the contents of the sector
-  sec_storage : process (CLK_14M)
+  /*sec_storage : process (CLK_14M)
   begin
     if rising_edge(CLK_14M) then
       if ram_we = '1' then
@@ -199,31 +212,8 @@ begin
       end if;
       ram_do <= sector_buf(to_integer(ram_addr));
     end if;
-  end process;
+  end process;*/
   
-  /*
-  -- Port A: Read/Write
-    process(CLK_14M)
-    begin
-        if rising_edge(CLK_14M) then
-            if ram_we_a = '1' then
-                sector_buf(to_integer(ram_addr_a)) <= ram_di_a;  -- Write to RAM
-            end if;
-            ram_do_a <= sector_buf(to_integer(ram_addr_a));      -- Read from RAM
-        end if;
-    end process;
-    
-    -- Port B: Independent Read/Write
-    process(CLK_14M)
-    begin
-        if rising_edge(CLK_14M) then
-            if ram_we_b = '1' then
-                sector_buf(to_integer(ram_addr_b)) <= ram_di_b;  -- Write to RAM
-            end if;
-            ram_do_b <= sector_buf(to_integer(ram_addr_b));      -- Read from RAM
-        end if;
-    end process;
-    */
 
   rom : entity work.hdd_rom port map (
     addr => A(7 downto 0),

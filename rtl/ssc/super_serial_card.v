@@ -148,7 +148,7 @@ ssc_rom rom (.clk(CLK_14M),.addr(ROM_ADDR),.data(DOA_C8S));
 reg     [4:0]           CLK_6551;
 // 14.31818
 // 50 MHz / 27 = 1.852 MHz
-always @(posedge CLK_50M)
+/*always @(posedge CLK_50M)
 begin
         if(RESET)
                 CLK_6551 <= 5'd0;
@@ -159,6 +159,20 @@ begin
                 default:
                         CLK_6551 <= CLK_6551 + 1'b1;
                 endcase
+end*/
+
+// 57.27 MHz / 31 = ~1.847 MHz
+always @(posedge CLK_50M)
+begin
+    if(RESET)
+        CLK_6551 <= 5'd0;
+    else
+        case(CLK_6551)
+            5'd30:  // Divide by 31 for ~1.847 MHz
+                CLK_6551 <= 5'd0;
+            default:
+                CLK_6551 <= CLK_6551 + 1'b1;
+        endcase
 end
 
 assign IRQ_N = SER_IRQ;

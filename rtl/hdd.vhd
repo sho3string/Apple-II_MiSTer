@@ -24,6 +24,9 @@ library ieee;
 use ieee.std_logic_1164.all;
 use ieee.numeric_std.all;
 
+library xpm;
+use xpm.vcomponents.all;
+
 entity hdd is
   port (
     CLK_14M        : in std_logic;
@@ -66,15 +69,22 @@ architecture rtl of hdd is
   signal increment_sec_addr: std_logic;
   signal select_d: std_logic;
 
-   
+  /*
   -- Sector buffer
-  --type sector_ram is array(0 to 255) of unsigned(7 downto 0);
+  type sector_ram is array(0 to 511) of unsigned(7 downto 0);
   -- Double-ported RAM for holding a sector
-  --signal sector_buf : sector_ram;
-  
-  signal sec_data_a : unsigned(7 downto 0);
-  signal sec_data_b : unsigned(7 downto 0);
-  signal we_cpu     : std_logic;
+  signal sector_buf : sector_ram;
+  */
+
+  signal sector_a_addr  : std_logic_vector(8 downto 0);
+  signal sector_a_din   : std_logic_vector(7 downto 0);
+  signal sector_a_dout  : std_logic_vector(7 downto 0);
+  signal sector_a_we    : std_logic;
+    
+  signal sector_b_addr  : std_logic_vector(8 downto 0);
+  signal sector_b_din   : std_logic_vector(7 downto 0);
+  signal sector_b_dout  : std_logic_vector(7 downto 0);
+  signal sector_b_we    : std_logic;
 
   -- ProDOS constants
   constant PRODOS_COMMAND_STATUS   : unsigned := X"00";
@@ -85,25 +95,56 @@ architecture rtl of hdd is
   constant PRODOS_STATUS_PROTECT   : unsigned := X"2B";
 
 begin
-  
-  
-  sector <= reg_block_h & reg_block_l;
-  we_cpu <= '1' when (RD = '0' and DEVICE_SELECT = '1' and A(3 downto 0) = X"8") else '0';
-  
-  secbuf : entity work.sector_ram_dp
-  port map (
-    clk => CLK_14M,
 
-    addr_a => sec_addr,
-    data_in_a => D_IN,
-    data_out_a => sec_data_a,
-    we_a => we_cpu,
+  sector_a_addr <= std_logic_vector(sec_addr);
+  sector_a_we <= '0'; -- default
+    
+  sector_b_addr <= std_logic_vector(ram_addr);
+  sector_b_din  <= std_logic_vector(ram_di);
+  sector_b_we   <= ram_we;
+  ram_do        <= unsigned(sector_b_dout);
 
-    addr_b => ram_addr,
-    data_in_b => ram_di,
-    data_out_b => ram_do,
-    we_b => ram_we
-  );
+  
+  xpm_sector_ram : xpm_memory_tdpram
+    generic map (
+      MEMORY_SIZE        => 512 * 8,
+      MEMORY_PRIMITIVE   => "auto",
+      CLOCKING_MODE      => "common_clock",
+      WRITE_DATA_WIDTH_A => 8,
+      READ_DATA_WIDTH_A  => 8,
+      WRITE_DATA_WIDTH_B => 8,
+      READ_DATA_WIDTH_B  => 8,
+      WRITE_MODE_A       => "read_first",
+      WRITE_MODE_B       => "read_first",
+      ADDR_WIDTH_A       => 9,
+      ADDR_WIDTH_B       => 9
+    )
+    port map (
+      clka    => CLK_14M,
+      rsta    => '0',
+      ena     => '1',
+      wea     => (others => sector_a_we),
+      addra   => sector_a_addr,
+      dina    => sector_a_din,
+      douta   => sector_a_dout,
+     
+      clkb    => CLK_14M,
+      rstb    => '0',
+      enb     => '1',
+      web     => (others => sector_b_we),
+      addrb   => sector_b_addr,
+      dinb    => sector_b_din,
+      doutb   => sector_b_dout,
+      
+      sleep    => '0',
+      regcea   => '0',
+      regceb   => '0',
+      injectsbiterra => '0',
+      injectdbiterra => '0',
+      injectsbiterrb => '0',
+      injectdbiterrb => '0'
+);
+
   
   cpu_interface : process (CLK_14M)
   begin
@@ -167,7 +208,7 @@ begin
               when X"7" => D_OUT <= reg_block_h;
               when X"8" =>
                 --D_OUT <= sector_buf(to_integer(sec_addr));
-                D_OUT <= sec_data_a;
+                D_OUT <= unsigned(sector_a_dout);
                 increment_sec_addr <= '1';
               when others => null;
             end case;
@@ -185,6 +226,8 @@ begin
               when X"7" => reg_block_h <= D_IN;
               when X"8" =>
                 --sector_buf(to_integer(sec_addr)) <= D_IN;
+                sector_a_we <= '1';
+                sector_a_din <= std_logic_vector(D_IN);
                 increment_sec_addr <= '1';
               when others => null;
             end case;
@@ -210,11 +253,10 @@ begin
       if ram_we = '1' then
         sector_buf(to_integer(ram_addr)) <= ram_di;
       end if;
-      ram_do <= sector_buf(to_integer(ram_addr));
+      ram_do <= unsigned(sector_buf(to_integer(ram_addr)));
     end if;
   end process;*/
   
-
   rom : entity work.hdd_rom port map (
     addr => A(7 downto 0),
     clk  => CLK_14M,

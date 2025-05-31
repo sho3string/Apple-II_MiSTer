@@ -384,8 +384,9 @@ begin
 	palette_toggle => palette_switch
     );
 
-	 
-  DISK_ACT <= not (D1_ACTIVE or D2_ACTIVE);
+  -- logic seems reversed, ie.. light is on when there is no disk activity
+  --DISK_ACT <= not (D1_ACTIVE or D2_ACTIVE);
+  DISK_ACT <= (D1_ACTIVE or D2_ACTIVE);
 
   disk : entity work.disk_ii port map (
     CLK_14M        => CLK_14M,
